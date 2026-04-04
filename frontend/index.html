@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SCM Forecasting Methods Lab</title>
+<title>Supply Chain Forecasting Methods & Machine Learning / Artificial Intelligence (ML/AI) Emissions</title>
 <script>
   (function(){var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t);})();
 </script>
@@ -130,6 +130,9 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus { outline: no
 #optimizedParams { background: var(--bg-elevated); border: 1px solid var(--accent); color: var(--accent); }
 #forecastNote { background: var(--bg-elevated); border: 1px solid var(--accent); color: var(--text-secondary); }
 footer { color: var(--text-footer); }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--accent-contrast); border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-right: 6px; }
+.button:disabled { opacity: 0.7; cursor: not-allowed; }
 </style>
 </head>
 <body>
@@ -137,6 +140,7 @@ footer { color: var(--text-footer); }
 <div class="header-left">
 <h1>SCM Forecasting Methods Lab</h1>
 <div class="subtitle">Fisher College of Business | The Ohio State University</div>
+<div class="subtitle">Vince Castillo, MBA, PhD | castillo.230@osu.edu</div>
 </div>
 <button id="themeToggle" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle light/dark mode">
 <span id="themeIcon">&#9790;</span>
@@ -206,7 +210,7 @@ Optimize (find best parameters by minimizing AIC/SSE)
 </div>
 </div>
 <div class="section">
-<div class="button" onclick="runForecast()">Run Forecast</div>
+<div class="button" id="runBtn" onclick="runForecast()">Run Forecast</div>
 <div id="error"></div>
 <div id="optimizedParams" style="display:none;margin-top:12px;padding:10px;border-radius:2px;font-size:12px;"></div>
 </div>
@@ -478,6 +482,31 @@ default: return {};
 }
 }
 
+const OPTIMIZE_WARNINGS = {
+sarima: 'SARIMA optimization fits ~54 models with s=52 seasonal state space. This can take several minutes.',
+arima: 'ARIMA optimization performs a grid search across all (p,d,q) combinations. This may take 30-60 seconds.',
+arimax: 'ARIMAX optimization performs a grid search across all (p,d,q) combinations with exogenous variables. This may take 30-60 seconds.',
+holt_winters: 'Holt-Winters optimization with seasonal period=52 can take 15-30 seconds.',
+auto_arima: 'Auto ARIMA uses stepwise search to find the best model. With seasonal=true and m=52, this can take several minutes.',
+};
+
+function confirmOptimize(method) {
+const warning = OPTIMIZE_WARNINGS[method];
+if (!warning) return true;
+return confirm('Optimization Warning\n\n' + warning + '\n\nProceed?');
+}
+
+function setRunning(on) {
+const btn = document.getElementById('runBtn');
+if (on) {
+btn.disabled = true;
+btn.innerHTML = '<span class="spinner"></span>Forecasting...';
+} else {
+btn.disabled = false;
+btn.textContent = 'Run Forecast';
+}
+}
+
 function runForecast() {
 const errorDiv = document.getElementById('error');
 errorDiv.innerHTML = '';
@@ -486,6 +515,8 @@ errorDiv.innerHTML = '<div class="error-message">Please load data first (use sam
 return;
 }
 const method = document.getElementById('method').value;
+const optimize = document.getElementById('optimize').checked;
+if (optimize && !confirmOptimize(method)) return;
 const params = getParams();
 let exog = null;
 if (method === 'arimax') {
@@ -496,8 +527,8 @@ return;
 }
 exog = exogData[exogCol];
 }
-const optimize = document.getElementById('optimize').checked;
 const payload = { method: method, params: params, y: yData, exog: exog, optimize: optimize };
+setRunning(true);
 fetch(API_BASE + '/api/forecast', {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
@@ -507,6 +538,7 @@ body: JSON.stringify(payload)
 .then(data => {
 if (data.forecast_result && data.forecast_result.error) {
 errorDiv.innerHTML = '<div class="error-message">Error: ' + data.forecast_result.error + '</div>';
+setRunning(false);
 return;
 }
 updateChart(data.forecast_result);
@@ -521,9 +553,11 @@ optDiv.innerHTML = '<strong>Optimized:</strong> ' + entries + ' | AIC: ' + (data
 } else {
 optDiv.style.display = 'none';
 }
+setRunning(false);
 })
 .catch(err => {
 errorDiv.innerHTML = '<div class="error-message">Backend error: ' + err.message + '. Check if server is running.</div>';
+setRunning(false);
 });
 }
 
