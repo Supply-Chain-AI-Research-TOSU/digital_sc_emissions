@@ -1,6 +1,6 @@
 # Supply Chain Forecasting Methods & ML/AI Emissions
 
-**Live demo:** https://supply-chain-ai-research-tosu.github.io/digital_sc_emissions/
+**Live demo:** https://emissions.supplychainbrutus.com
 
 A live forecasting tools catalog that demonstrates the carbon footprint of ML/AI operations. Built for graduate supply chain management courses at OSU Fisher College of Business.
 
@@ -73,15 +73,7 @@ cd backend
 uvicorn main:app --reload --host 0.0.0.0 --port 8010
 ```
 
-### Run Frontend
-
-```bash
-python -m http.server 8011 --bind 0.0.0.0
-```
-
-Open http://localhost:8011 in your browser. Update `API_BASE` in `index.html` if needed (default points to LAN IP on port 8010).
-
-Note: `index.html` is now in the project root, not `frontend/`.
+Open http://localhost:8010 in your browser. The frontend is served from the same FastAPI server.
 
 ## EC2 Deployment
 
@@ -116,15 +108,9 @@ chmod +x start.sh
 
 Backend will be accessible at `http://<EC2_PUBLIC_IP>:8010`
 
-## GitHub Pages Deployment
+## Frontend Serving
 
-1. Copy `index.html` to your GitHub Pages repo root or `docs/` folder
-2. Update `API_BASE` at the top of the `<script>` block:
-   ```javascript
-   const API_BASE = "http://<YOUR_EC2_IP>:8010";
-   ```
-3. Commit and push
-4. GitHub Pages will automatically deploy
+The frontend is served directly by FastAPI. The `GET /` route in `backend/main.py` returns `frontend/index.html` as a `FileResponse`. No separate static file server is needed — uvicorn handles both the API and the frontend on port 8010.
 
 ## Post-Session Analysis
 
@@ -167,7 +153,8 @@ python generate_synthetic.py
 │   ├── aggregate.py         # SQLite session logging
 │   ├── requirements.txt     # Python deps
 │   └── start.sh             # Startup script (port 8010)
-├── index.html               # Single-file SPA (light/dark mode, spinner, TL;DR)
+├── frontend/
+│   └── index.html           # Single-file SPA (light/dark mode, spinner, TL;DR)
 ├── data/
 │   ├── generate_synthetic.py
 │   └── synthetic_demand.csv
