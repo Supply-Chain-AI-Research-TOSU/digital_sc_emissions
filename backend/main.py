@@ -72,6 +72,11 @@ async def serve_frontend():
     return FileResponse("../frontend/index.html")
 
 
+@app.get("/favicon.ico")
+async def serve_favicon():
+    return FileResponse("../public/favicon.ico")
+
+
 @app.post("/api/forecast")
 def forecast_endpoint(req: ForecastRequest):
     """Run a forecast with emissions tracking."""
