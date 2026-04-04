@@ -1,4 +1,4 @@
-# SCM Forecasting Methods Lab
+# Supply Chain Forecasting Methods & ML/AI Emissions
 
 A live forecasting tools catalog that demonstrates the carbon footprint of ML/AI operations. Built for graduate supply chain management courses at OSU Fisher College of Business.
 
@@ -9,6 +9,17 @@ This tool runs classical forecasting methods (naive, ARIMA, exponential smoothin
 - At-scale projections (10k and 500k users)
 - Live class-wide aggregate emissions
 - Optional parameter optimization (AIC grid search for ARIMA, SSE minimization for exponential smoothing)
+
+The frontend includes a TL;DR dropdown that frames the compute stack as a teaching analogy for Scope 1/2/3 emissions in a physical supply chain:
+- **Scope 1**: Direct emissions from each forecast request (measured live with CodeCarbon)
+- **Scope 2**: Grid energy keeping the server alive regardless of traffic
+- **Scope 3**: Embodied carbon in hardware, model training, student devices, and the AI that built the tool
+
+## Pedagogy
+
+This tool is designed for undergraduate and graduate students in supply chain management, business analytics, or any course that touches AI, sustainability, or quantitative methods. It serves a dual pedagogical purpose: students interact with it as a functional forecasting catalog, selecting methods, adjusting parameters, and generating 12-period forecasts on a synthetic demand dataset with known structure. Underneath, every forecast call is measured in real time using CodeCarbon, accumulating a live class-wide emissions total that is visible on screen. The tool is intentionally approachable -- no installation, no login, no code -- so that the barrier to entry is zero and the entire class session can focus on interpretation rather than setup. Undergraduates can engage at the level of method comparison and emissions intuition; graduate students can go deeper into methodology, measurement validity, and scope accounting.
+
+The reveal structure is the core of the lesson. Students use the tool without knowing its carbon cost, then the instructor surfaces the full emissions accounting: per-request Scope 1 cost (measured), server idle Scope 2 cost (calculated), and the largely invisible Scope 3 upstream costs including the AI-assisted development process that built the tool itself. The build session -- running local open-source models on GPU hardware with CodeCarbon monitoring the entire session -- produced a measured footprint that dwarfs the entire class's runtime usage combined. That ratio, and the methodological gaps in what can and cannot be measured, mirrors the Scope 3 data challenges students will face in industry when auditing AI tool procurement decisions. The discussion question writes itself: what would you need to know that we couldn't measure today?
 
 ## Architecture
 
@@ -24,6 +35,16 @@ This tool runs classical forecasting methods (naive, ARIMA, exponential smoothin
                      │  Aggregate   │
                      └─────────────┘
 ```
+
+## Frontend Features
+
+- **Light/dark mode toggle** with localStorage persistence (moon/sun icon in header)
+- **TL;DR dropdown** explaining Scope 1/2/3 emissions analogy
+- **Loading spinner** on the Run Forecast button while requests are in flight
+- **Optimization warnings** — confirm dialog before running expensive grid searches (SARIMA, ARIMA, ARIMAX, Holt-Winters, Auto ARIMA)
+- **Methodology dropdown** explaining how CodeCarbon measures emissions
+- **Real-world comparisons** — randomized analogies for emission values at every scale
+- **Responsive layout** — collapses to single column on mobile
 
 ## Local Development
 
@@ -142,7 +163,7 @@ python generate_synthetic.py
 │   ├── requirements.txt     # Python deps
 │   └── start.sh             # Startup script (port 8010)
 ├── frontend/
-│   └── index.html           # Single-file SPA
+│   └── index.html           # Single-file SPA (light/dark mode, spinner, TL;DR)
 ├── data/
 │   ├── generate_synthetic.py
 │   └── synthetic_demand.csv
@@ -159,6 +180,12 @@ python generate_synthetic.py
 
 All exponential smoothing and ARIMA methods support optional parameter optimization.
 
+## Built With
+
+- **Models**: Qwen3.5:27b, Gemma4:27b, gpt-OSS:20b via OpenCode
+- **Supervision**: Claude Code
+- **Carbon tracking**: [CodeCarbon](https://codecarbon.io/)
+
 ## Notes
 
 - CodeCarbon 3.x auto-detects region via IP geolocation
@@ -166,3 +193,4 @@ All exponential smoothing and ARIMA methods support optional parameter optimizat
 - GPU power read via NVML (development machine only)
 - EC2 has no GPU — falls back to CPU TDP estimates
 - Frontend includes a methodology dropdown explaining how emissions are measured
+- Optimization on SARIMA with s=52 can take several minutes (grid search across ~54 model combinations)
