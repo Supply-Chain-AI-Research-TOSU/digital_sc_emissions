@@ -74,11 +74,12 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8010
 ### Run Frontend
 
 ```bash
-cd frontend
 python -m http.server 8011 --bind 0.0.0.0
 ```
 
 Open http://localhost:8011 in your browser. Update `API_BASE` in `index.html` if needed (default points to LAN IP on port 8010).
+
+Note: `index.html` is now in the project root, not `frontend/`.
 
 ## EC2 Deployment
 
@@ -115,7 +116,7 @@ Backend will be accessible at `http://<EC2_PUBLIC_IP>:8010`
 
 ## GitHub Pages Deployment
 
-1. Copy `frontend/index.html` to your GitHub Pages repo root or `docs/` folder
+1. Copy `index.html` to your GitHub Pages repo root or `docs/` folder
 2. Update `API_BASE` at the top of the `<script>` block:
    ```javascript
    const API_BASE = "http://<YOUR_EC2_IP>:8010";
@@ -164,8 +165,7 @@ python generate_synthetic.py
 │   ├── aggregate.py         # SQLite session logging
 │   ├── requirements.txt     # Python deps
 │   └── start.sh             # Startup script (port 8010)
-├── frontend/
-│   └── index.html           # Single-file SPA (light/dark mode, spinner, TL;DR)
+├── index.html               # Single-file SPA (light/dark mode, spinner, TL;DR)
 ├── data/
 │   ├── generate_synthetic.py
 │   └── synthetic_demand.csv
