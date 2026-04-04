@@ -4,93 +4,153 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SCM Forecasting Methods Lab</title>
+<script>
+  (function(){var t=localStorage.getItem('theme');if(t)document.documentElement.setAttribute('data-theme',t);})();
+</script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <style>
+:root {
+  --bg-body: #0f1117;
+  --bg-panel: #14171f;
+  --bg-elevated: #1a1d26;
+  --border: #2d3342;
+  --border-subtle: #20242c;
+  --text-primary: #e0e0e0;
+  --text-secondary: #8b94a3;
+  --text-tertiary: #b0b8c4;
+  --accent: #2dd4bf;
+  --accent-hover: #24b5a7;
+  --accent-contrast: #0f1117;
+  --bg-secondary: #2d3342;
+  --text-on-secondary: #e0e0e0;
+  --bg-secondary-hover: #3a4152;
+  --bg-error: #3a0f0f;
+  --text-error: #fca5a5;
+  --text-warning: #fbbf24;
+  --text-footer: #4a5568;
+  --bg-inset: #0f1117;
+  --bg-code: #1a1d26;
+}
+[data-theme="light"] {
+  --bg-body: #f8fafc;
+  --bg-panel: #ffffff;
+  --bg-elevated: #f1f5f9;
+  --border: #e2e8f0;
+  --border-subtle: #f1f5f9;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-tertiary: #475569;
+  --accent: #0d9488;
+  --accent-hover: #0f766e;
+  --accent-contrast: #ffffff;
+  --bg-secondary: #e2e8f0;
+  --text-on-secondary: #1e293b;
+  --bg-secondary-hover: #cbd5e1;
+  --bg-error: #fef2f2;
+  --text-error: #dc2626;
+  --text-warning: #d97706;
+  --text-footer: #94a3b8;
+  --bg-inset: #f8fafc;
+  --bg-code: #f1f5f9;
+}
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f1117; color: #e0e0e0; font-size: 14px; line-height: 1.5; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-body); color: var(--text-primary); font-size: 14px; line-height: 1.5; }
 .monospace { font-family: 'SF Mono', 'Fira Code', Consolas, monospace; }
-.header { background: #1a1d26; padding: 16px 24px; border-bottom: 1px solid #2d3342; }
-.header h1 { font-size: 20px; font-weight: 600; color: #2dd4bf; margin-bottom: 4px; }
-.header .subtitle { font-size: 13px; color: #8b94a3; }
+.accent-text { color: var(--accent); }
+.header { background: var(--bg-elevated); padding: 16px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.header-left h1 { font-size: 20px; font-weight: 600; color: var(--accent); margin-bottom: 4px; }
+.header-left .subtitle { font-size: 13px; color: var(--text-secondary); }
+.theme-toggle { background: none; border: 1px solid var(--border); border-radius: 50%; width: 36px; height: 36px; cursor: pointer; font-size: 18px; color: var(--text-secondary); display: flex; align-items: center; justify-content: center; transition: border-color 0.2s, color 0.2s; }
+.theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
 .container { display: grid; grid-template-columns: 340px 1fr; min-height: calc(100vh - 80px); }
 .panel { padding: 20px; }
-.left-panel { background: #14171f; border-right: 1px solid #2d3342; overflow-y: auto; }
+.left-panel { background: var(--bg-panel); border-right: 1px solid var(--border); overflow-y: auto; }
 .right-panel { padding: 20px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
 .section { margin-bottom: 24px; }
-.section-title { font-size: 12px; font-weight: 600; color: #8b94a3; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+.section-title { font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
 .form-group { margin-bottom: 16px; }
-.form-group label { display: block; font-size: 13px; color: #b0b8c4; margin-bottom: 6px; }
-input[type="text"], input[type="number"], select, input[type="file"] { width: 100%; background: #1a1d26; border: 1px solid #2d3342; color: #e0e0e0; padding: 8px 10px; border-radius: 2px; font-size: 13px; font-family: inherit; }
-input[type="text"]:focus, input[type="number"]:focus, select:focus { outline: none; border-color: #2dd4bf; }
+.form-group label { display: block; font-size: 13px; color: var(--text-tertiary); margin-bottom: 6px; }
+input[type="text"], input[type="number"], select, input[type="file"] { width: 100%; background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-primary); padding: 8px 10px; border-radius: 2px; font-size: 13px; font-family: inherit; }
+option { background: var(--bg-elevated); color: var(--text-primary); }
+input[type="text"]:focus, input[type="number"]:focus, select:focus { outline: none; border-color: var(--accent); }
 .checkbox-group { display: flex; align-items: center; gap: 8px; }
 .checkbox-group input { width: auto; }
-.button { background: #2dd4bf; color: #0f1117; border: none; padding: 10px 16px; border-radius: 2px; font-size: 13px; font-weight: 600; cursor: pointer; width: 100%; }
-.button:hover { background: #24b5a7; }
-.button.secondary { background: #2d3342; color: #e0e0e0; }
-.button.secondary:hover { background: #3a4152; }
+.button { background: var(--accent); color: var(--accent-contrast); border: none; padding: 10px 16px; border-radius: 2px; font-size: 13px; font-weight: 600; cursor: pointer; width: 100%; }
+.button:hover { background: var(--accent-hover); }
+.button.secondary { background: var(--bg-secondary); color: var(--text-on-secondary); }
+.button.secondary:hover { background: var(--bg-secondary-hover); }
 @media (max-width: 768px) {
   .container { grid-template-columns: 1fr; }
-  .left-panel { border-right: none; border-bottom: 1px solid #2d3342; }
+  .left-panel { border-right: none; border-bottom: 1px solid var(--border); }
 }
-.chart-container { background: #14171f; border: 1px solid #2d3342; border-radius: 2px; padding: 16px; }
+.chart-container { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 2px; padding: 16px; }
 .forecast-table { width: 100%; font-size: 12px; border-collapse: collapse; }
-.forecast-table th { text-align: left; color: #8b94a3; padding: 6px; border-bottom: 1px solid #2d3342; }
-.forecast-table td { padding: 6px; border-bottom: 1px solid #20242c; font-family: monospace; }
+.forecast-table th { text-align: left; color: var(--text-secondary); padding: 6px; border-bottom: 1px solid var(--border); }
+.forecast-table td { padding: 6px; border-bottom: 1px solid var(--border-subtle); font-family: monospace; }
 .forecast-table tr:last-child td { border-bottom: none; }
-.emissions-card { background: #14171f; border: 1px solid #2d3342; border-radius: 2px; padding: 16px; }
-.emissions-card h3 { color: #2dd4bf; font-size: 14px; font-weight: 600; margin-bottom: 12px; }
-.emission-value { font-size: 28px; font-weight: 300; color: #e0e0e0; font-family: monospace; }
-.emission-label { font-size: 12px; color: #8b94a3; margin-top: 4px; }
-.comparison { color: #8b94a3; font-size: 13px; margin-top: 12px; font-style: italic; }
+.emissions-card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 2px; padding: 16px; }
+.emissions-card h3 { color: var(--accent); font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+.emission-value { font-size: 28px; font-weight: 300; color: var(--text-primary); font-family: monospace; }
+.emission-label { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+.comparison { color: var(--text-secondary); font-size: 13px; margin-top: 12px; font-style: italic; }
 .scales-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
-.scale-item { background: #0f1117; padding: 12px; border-radius: 2px; }
-.scale-item h4 { font-size: 11px; color: #8b94a3; text-transform: uppercase; margin-bottom: 8px; }
-.scale-value { font-size: 16px; font-weight: 500; color: #e0e0e0; font-family: monospace; }
-.scale-unit { font-size: 12px; color: #8b94a3; }
-.aggregate-card { background: #14171f; border: 1px solid #2d3342; border-radius: 2px; padding: 16px; }
-.aggregate-card h3 { font-size: 14px; font-weight: 600; color: #8b94a3; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.scale-item { background: var(--bg-inset); padding: 12px; border-radius: 2px; }
+.scale-item h4 { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 8px; }
+.scale-value { font-size: 16px; font-weight: 500; color: var(--text-primary); font-family: monospace; }
+.scale-unit { font-size: 12px; color: var(--text-secondary); }
+.aggregate-card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 2px; padding: 16px; }
+.aggregate-card h3 { font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
 .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; }
 .status-dot.offline { background: #ef4444; animation: pulse 2s infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 .aggregate-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px; }
 .stat-item { text-align: center; }
-.stat-value { font-size: 20px; font-weight: 500; color: #e0e0e0; font-family: monospace; }
-.stat-label { font-size: 11px; color: #8b94a3; margin-top: 4px; }
+.stat-value { font-size: 20px; font-weight: 500; color: var(--text-primary); font-family: monospace; }
+.stat-label { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
 .preview-table { width: 100%; font-size: 11px; border-collapse: collapse; margin-top: 8px; }
-.preview-table th, .preview-table td { padding: 4px; text-align: left; border: 1px solid #2d3342; }
-.preview-table th { background: #1a1d26; color: #8b94a3; }
-.preview-table td { background: #0f1117; }
-.error-message { background: #3a0f0f; border: 1px solid #ef4444; color: #fca5a5; padding: 12px; border-radius: 2px; font-size: 13px; margin-top: 12px; }
+.preview-table th, .preview-table td { padding: 4px; text-align: left; border: 1px solid var(--border); }
+.preview-table th { background: var(--bg-elevated); color: var(--text-secondary); }
+.preview-table td { background: var(--bg-inset); }
+.error-message { background: var(--bg-error); border: 1px solid #ef4444; color: var(--text-error); padding: 12px; border-radius: 2px; font-size: 13px; margin-top: 12px; }
 .parameter-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
-.methodology-toggle { display: flex; align-items: center; gap: 6px; cursor: pointer; color: #8b94a3; font-size: 12px; margin-top: 12px; user-select: none; }
-.methodology-toggle:hover { color: #2dd4bf; }
+.methodology-toggle { display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-secondary); font-size: 12px; margin-top: 12px; user-select: none; }
+.methodology-toggle:hover { color: var(--accent); }
 .methodology-toggle .arrow { transition: transform 0.2s; display: inline-block; font-size: 10px; }
 .methodology-toggle .arrow.open { transform: rotate(90deg); }
-.methodology-body { display: none; margin-top: 10px; padding: 12px; background: #0f1117; border: 1px solid #2d3342; border-radius: 2px; font-size: 12px; line-height: 1.7; color: #8b94a3; }
+.methodology-body { display: none; margin-top: 10px; padding: 12px; background: var(--bg-inset); border: 1px solid var(--border); border-radius: 2px; font-size: 12px; line-height: 1.7; color: var(--text-secondary); }
 .methodology-body.open { display: block; }
-.methodology-body h4 { color: #2dd4bf; font-size: 12px; margin: 10px 0 4px 0; font-weight: 600; }
+.methodology-body h4 { color: var(--accent); font-size: 12px; margin: 10px 0 4px 0; font-weight: 600; }
 .methodology-body h4:first-child { margin-top: 0; }
-.methodology-body code { background: #1a1d26; padding: 1px 5px; border-radius: 2px; color: #e0e0e0; font-size: 11px; }
+.methodology-body code { background: var(--bg-code); padding: 1px 5px; border-radius: 2px; color: var(--text-primary); font-size: 11px; }
 .methodology-body ul { margin: 4px 0 4px 16px; }
 .methodology-body li { margin-bottom: 3px; }
-.methodology-body .caveat { color: #fbbf24; }
+.methodology-body .caveat { color: var(--text-warning); }
+.tldr-section { background: var(--bg-elevated); border-bottom: 1px solid var(--border); padding: 12px 24px; }
+#optimizedParams { background: var(--bg-elevated); border: 1px solid var(--accent); color: var(--accent); }
+#forecastNote { background: var(--bg-elevated); border: 1px solid var(--accent); color: var(--text-secondary); }
+footer { color: var(--text-footer); }
 </style>
 </head>
 <body>
 <div class="header">
+<div class="header-left">
 <h1>SCM Forecasting Methods Lab</h1>
 <div class="subtitle">Fisher College of Business | The Ohio State University</div>
 </div>
-<div style="background:#1a1d26;border-bottom:1px solid #2d3342;padding:12px 24px;">
-<div class="methodology-toggle" onclick="toggleTldr()" style="font-size:13px;font-weight:600;color:#8b94a3;">
+<button id="themeToggle" class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle light/dark mode">
+<span id="themeIcon">&#9790;</span>
+</button>
+</div>
+<div class="tldr-section">
+<div class="methodology-toggle" onclick="toggleTldr()" style="font-size:13px;font-weight:600;">
 <span class="arrow" id="tldrArrow">&#9654;</span> TL;DR
 </div>
 <div class="methodology-body" id="tldrBody" style="margin-top:8px;line-height:1.7;">
 This compute stack is a teaching analogy for a physical supply chain.
-<strong style="color:#2dd4bf;">Scope 1</strong> is the electricity consumed by each forecast request — you own the server, you triggered the compute, just like fuel burned by your own fleet. We measure this live with CodeCarbon on every request.
-<strong style="color:#2dd4bf;">Scope 2</strong> is the grid energy keeping the server alive regardless of traffic — idle draw and infrastructure overhead, like a warehouse that stays lit whether trucks are loading or not. We can calculate this too: a t2.micro running 24/7 in Ohio draws ~3W, costing ~10 kg CO₂eq/year regardless of how many forecasts you run.
-<strong style="color:#2dd4bf;">Scope 3</strong> is everything upstream and downstream: hardware manufacturing, model training, student devices, network transmission, and the AI that built this tool. We measured Scope 1 and estimated Scope 2. Scope 3 is mostly invisible — just like in your suppliers' reports.
+<strong class="accent-text">Scope 1</strong> is the electricity consumed by each forecast request — you own the server, you triggered the compute, just like fuel burned by your own fleet. We measure this live with CodeCarbon on every request.
+<strong class="accent-text">Scope 2</strong> is the grid energy keeping the server alive regardless of traffic — idle draw and infrastructure overhead, like a warehouse that stays lit whether trucks are loading or not. We can calculate this too: a t2.micro running 24/7 in Ohio draws ~3W, costing ~10 kg CO₂eq/year regardless of how many forecasts you run.
+<strong class="accent-text">Scope 3</strong> is everything upstream and downstream: hardware manufacturing, model training, student devices, network transmission, and the AI that built this tool. We measured Scope 1 and estimated Scope 2. Scope 3 is mostly invisible — just like in your suppliers' reports.
 </div>
 </div>
 <div class="container">
@@ -148,7 +208,7 @@ Optimize (find best parameters by minimizing AIC/SSE)
 <div class="section">
 <div class="button" onclick="runForecast()">Run Forecast</div>
 <div id="error"></div>
-<div id="optimizedParams" style="display:none;margin-top:12px;background:#1a1d26;border:1px solid #2dd4bf;padding:10px;border-radius:2px;font-size:12px;color:#2dd4bf;"></div>
+<div id="optimizedParams" style="display:none;margin-top:12px;padding:10px;border-radius:2px;font-size:12px;"></div>
 </div>
 </div>
 <div class="panel right-panel">
@@ -156,7 +216,7 @@ Optimize (find best parameters by minimizing AIC/SSE)
 <canvas id="forecastChart"></canvas>
 </div>
 <div class="chart-container">
-<div id="forecastNote" style="display:none;background:#1a1d26;border:1px solid #2dd4bf;color:#8b94a3;padding:10px;border-radius:2px;font-size:12px;margin-bottom:12px;"></div>
+<div id="forecastNote" style="display:none;padding:10px;border-radius:2px;font-size:12px;margin-bottom:12px;"></div>
 <table class="forecast-table" id="forecastTable">
 <thead><tr><th>Period</th><th>Forecast</th></tr></thead>
 <tbody></tbody>
@@ -187,7 +247,7 @@ Optimize (find best parameters by minimizing AIC/SSE)
 <div class="methodology-body" id="methBody">
 
 <h4>What we measure</h4>
-Each forecast request consumes CPU, GPU, and RAM power on the server. <a href="https://mlco2.github.io/codecarbon/" style="color:#2dd4bf;">CodeCarbon</a> wraps each call, sampling hardware power draw every 1 second, then converts energy consumed into CO2 equivalent:
+Each forecast request consumes CPU, GPU, and RAM power on the server. <a href="https://mlco2.github.io/codecarbon/" class="accent-text">CodeCarbon</a> wraps each call, sampling hardware power draw every 1 second, then converts energy consumed into CO2 equivalent:
 <ul>
 <li><strong>CPU power:</strong> Read via Intel RAPL when available; falls back to TDP estimation on cloud VMs.</li>
 <li><strong>GPU power:</strong> Read via NVIDIA NVML when present; zero on CPU-only instances.</li>
@@ -467,6 +527,18 @@ errorDiv.innerHTML = '<div class="error-message">Backend error: ' + err.message 
 });
 }
 
+function getChartColors() {
+const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+return {
+historical: isDark ? '#2dd4bf' : '#0d9488',
+forecast: isDark ? '#94a3b8' : '#64748b',
+modelFit: isDark ? '#4a5568' : '#94a3b8',
+legend: isDark ? '#e0e0e0' : '#1e293b',
+tick: isDark ? '#8b94a3' : '#64748b',
+grid: isDark ? '#2d3342' : '#e2e8f0',
+};
+}
+
 function updateChart(result) {
 const ctx = document.getElementById('forecastChart').getContext('2d');
 const historical = yData;
@@ -482,28 +554,67 @@ const allFitted = fitted.length ? [...fitted.slice(-histSlice), ...Array(12).fil
 if (chart) {
 chart.destroy();
 }
+const c = getChartColors();
 chart = new Chart(ctx, {
 type: 'line',
 data: {
 labels: allLabels,
 datasets: [
-{ label: 'Historical', data: allHistorical, borderColor: '#2dd4bf', backgroundColor: '#2dd4bf', tension: 0, pointRadius: 0 },
-{ label: 'Forecast', data: allForecast, borderColor: '#94a3b8', backgroundColor: '#94a3b8', borderDash: [5, 5], tension: 0, pointRadius: 0 },
-...(allFitted.length ? [{ label: 'Model Fit', data: allFitted, borderColor: '#4a5568', backgroundColor: '#4a5568', borderDash: [2, 2], tension: 0, pointRadius: 0 }] : [])
+{ label: 'Historical', data: allHistorical, borderColor: c.historical, backgroundColor: c.historical, tension: 0, pointRadius: 0 },
+{ label: 'Forecast', data: allForecast, borderColor: c.forecast, backgroundColor: c.forecast, borderDash: [5, 5], tension: 0, pointRadius: 0 },
+...(allFitted.length ? [{ label: 'Model Fit', data: allFitted, borderColor: c.modelFit, backgroundColor: c.modelFit, borderDash: [2, 2], tension: 0, pointRadius: 0 }] : [])
 ]
 },
 options: {
 responsive: true,
 maintainAspectRatio: false,
 interaction: { mode: 'index', intersect: false },
-plugins: { legend: { labels: { color: '#e0e0e0' } } },
+plugins: { legend: { labels: { color: c.legend } } },
 scales: {
-x: { ticks: { color: '#8b94a3', maxTicksLimit: 10 }, grid: { color: '#2d3342' } },
-y: { ticks: { color: '#8b94a3' }, grid: { color: '#2d3342' } }
+x: { ticks: { color: c.tick, maxTicksLimit: 10 }, grid: { color: c.grid } },
+y: { ticks: { color: c.tick }, grid: { color: c.grid } }
 }
 }
 });
 }
+
+function refreshChartColors() {
+if (!chart) return;
+const c = getChartColors();
+chart.data.datasets[0].borderColor = c.historical;
+chart.data.datasets[0].backgroundColor = c.historical;
+chart.data.datasets[1].borderColor = c.forecast;
+chart.data.datasets[1].backgroundColor = c.forecast;
+if (chart.data.datasets[2]) {
+chart.data.datasets[2].borderColor = c.modelFit;
+chart.data.datasets[2].backgroundColor = c.modelFit;
+}
+chart.options.plugins.legend.labels.color = c.legend;
+chart.options.scales.x.ticks.color = c.tick;
+chart.options.scales.x.grid.color = c.grid;
+chart.options.scales.y.ticks.color = c.tick;
+chart.options.scales.y.grid.color = c.grid;
+chart.update();
+}
+
+function toggleTheme() {
+const html = document.documentElement;
+const current = html.getAttribute('data-theme');
+const next = current === 'light' ? 'dark' : 'light';
+html.setAttribute('data-theme', next);
+localStorage.setItem('theme', next);
+updateThemeIcon(next);
+refreshChartColors();
+}
+
+function updateThemeIcon(theme) {
+document.getElementById('themeIcon').innerHTML = theme === 'light' ? '&#9728;' : '&#9790;';
+}
+
+(function initTheme() {
+const saved = localStorage.getItem('theme');
+if (saved) updateThemeIcon(saved);
+})();
 
 function toggleTldr() {
 const body = document.getElementById('tldrBody');
@@ -658,6 +769,6 @@ handleMethodChange();
 pollAggregate();
 setInterval(pollAggregate, 15000);
 </script>
-<footer style="text-align:center;padding:20px;font-size:11px;color:#4a5568;">Built with Qwen3.5:27b via OpenCode | Carbon tracked with CodeCarbon</footer>
+<footer style="text-align:center;padding:20px;font-size:11px;">Built with Qwen3.5:27b via OpenCode | Carbon tracked with CodeCarbon</footer>
 </body>
 </html>
