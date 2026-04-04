@@ -82,6 +82,12 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus { outline: no
 <h1>SCM Forecasting Methods Lab</h1>
 <div class="subtitle">Fisher College of Business | The Ohio State University</div>
 </div>
+<div style="background:#1a1d26;border-bottom:1px solid #2d3342;padding:16px 24px;font-size:13px;color:#8b94a3;line-height:1.7;">
+This compute stack is a teaching analogy for a physical supply chain.
+<strong style="color:#2dd4bf;">Scope 1</strong> is the electricity consumed by each forecast request — you own the server, you triggered the compute, just like fuel burned by your own fleet. We measure this live with CodeCarbon on every request.
+<strong style="color:#2dd4bf;">Scope 2</strong> is the grid energy keeping the server alive regardless of traffic — idle draw and infrastructure overhead, like a warehouse that stays lit whether trucks are loading or not. We can calculate this too: a t2.micro running 24/7 in Ohio draws ~3W, costing ~10 kg CO₂eq/year regardless of how many forecasts you run.
+<strong style="color:#2dd4bf;">Scope 3</strong> is everything upstream and downstream: hardware manufacturing, model training, student devices, network transmission, and the AI that built this tool. We measured Scope 1 and estimated Scope 2. Scope 3 is mostly invisible — just like in your suppliers' reports.
+</div>
 <div class="container">
 <div class="panel left-panel">
 <div class="section">
