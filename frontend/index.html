@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SCM Forecasting Methods Lab</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f1117; color: #e0e0e0; font-size: 14px; line-height: 1.5; }
+.monospace { font-family: 'SF Mono', 'Fira Code', Consolas, monospace; }
+.header { background: #1a1d26; padding: 16px 24px; border-bottom: 1px solid #2d3342; }
+.header h1 { font-size: 20px; font-weight: 600; color: #2dd4bf; margin-bottom: 4px; }
+.header .subtitle { font-size: 13px; color: #8b94a3; }
+.container { display: grid; grid-template-columns: 340px 1fr; min-height: calc(100vh - 80px); }
+.panel { padding: 20px; }
+.left-panel { background: #14171f; border-right: 1px solid #2d3342; overflow-y: auto; }
+.right-panel { padding: 20px; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
+.section { margin-bottom: 24px; }
+.section-title { font-size: 12px; font-weight: 600; color: #8b94a3; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 13px; color: #b0b8c4; margin-bottom: 6px; }
+input[type="text"], input[type="number"], select, input[type="file"] { width: 100%; background: #1a1d26; border: 1px solid #2d3342; color: #e0e0e0; padding: 8px 10px; border-radius: 2px; font-size: 13px; font-family: inherit; }
+input[type="text"]:focus, input[type="number"]:focus, select:focus { outline: none; border-color: #2dd4bf; }
+.checkbox-group { display: flex; align-items: center; gap: 8px; }
+.checkbox-group input { width: auto; }
+.button { background: #2dd4bf; color: #0f1117; border: none; padding: 10px 16px; border-radius: 2px; font-size: 13px; font-weight: 600; cursor: pointer; width: 100%; }
+.button:hover { background: #24b5a7; }
+.button.secondary { background: #2d3342; color: #e0e0e0; }
+.button.secondary:hover { background: #3a4152; }
+@media (max-width: 768px) {
+  .container { grid-template-columns: 1fr; }
+  .left-panel { border-right: none; border-bottom: 1px solid #2d3342; }
+}
+.chart-container { background: #14171f; border: 1px solid #2d3342; border-radius: 2px; padding: 16px; }
+.forecast-table { width: 100%; font-size: 12px; border-collapse: collapse; }
+.forecast-table th { text-align: left; color: #8b94a3; padding: 6px; border-bottom: 1px solid #2d3342; }
+.forecast-table td { padding: 6px; border-bottom: 1px solid #20242c; font-family: monospace; }
+.forecast-table tr:last-child td { border-bottom: none; }
+.emissions-card { background: #14171f; border: 1px solid #2d3342; border-radius: 2px; padding: 16px; }
+.emissions-card h3 { color: #2dd4bf; font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+.emission-value { font-size: 28px; font-weight: 300; color: #e0e0e0; font-family: monospace; }
+.emission-label { font-size: 12px; color: #8b94a3; margin-top: 4px; }
+.comparison { color: #8b94a3; font-size: 13px; margin-top: 12px; font-style: italic; }
+.scales-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+.scale-item { background: #0f1117; padding: 12px; border-radius: 2px; }
+.scale-item h4 { font-size: 11px; color: #8b94a3; text-transform: uppercase; margin-bottom: 8px; }
+.scale-value { font-size: 16px; font-weight: 500; color: #e0e0e0; font-family: monospace; }
+.scale-unit { font-size: 12px; color: #8b94a3; }
+.aggregate-card { background: #14171f; border: 1px solid #2d3342; border-radius: 2px; padding: 16px; }
+.aggregate-card h3 { font-size: 14px; font-weight: 600; color: #8b94a3; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; }
+.status-dot.offline { background: #ef4444; animation: pulse 2s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+.aggregate-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px; }
+.stat-item { text-align: center; }
+.stat-value { font-size: 20px; font-weight: 500; color: #e0e0e0; font-family: monospace; }
+.stat-label { font-size: 11px; color: #8b94a3; margin-top: 4px; }
+.preview-table { width: 100%; font-size: 11px; border-collapse: collapse; margin-top: 8px; }
+.preview-table th, .preview-table td { padding: 4px; text-align: left; border: 1px solid #2d3342; }
+.preview-table th { background: #1a1d26; color: #8b94a3; }
+.preview-table td { background: #0f1117; }
+.error-message { background: #3a0f0f; border: 1px solid #ef4444; color: #fca5a5; padding: 12px; border-radius: 2px; font-size: 13px; margin-top: 12px; }
+.parameter-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.methodology-toggle { display: flex; align-items: center; gap: 6px; cursor: pointer; color: #8b94a3; font-size: 12px; margin-top: 12px; user-select: none; }
+.methodology-toggle:hover { color: #2dd4bf; }
+.methodology-toggle .arrow { transition: transform 0.2s; display: inline-block; font-size: 10px; }
+.methodology-toggle .arrow.open { transform: rotate(90deg); }
+.methodology-body { display: none; margin-top: 10px; padding: 12px; background: #0f1117; border: 1px solid #2d3342; border-radius: 2px; font-size: 12px; line-height: 1.7; color: #8b94a3; }
+.methodology-body.open { display: block; }
+.methodology-body h4 { color: #2dd4bf; font-size: 12px; margin: 10px 0 4px 0; font-weight: 600; }
+.methodology-body h4:first-child { margin-top: 0; }
+.methodology-body code { background: #1a1d26; padding: 1px 5px; border-radius: 2px; color: #e0e0e0; font-size: 11px; }
+.methodology-body ul { margin: 4px 0 4px 16px; }
+.methodology-body li { margin-bottom: 3px; }
+.methodology-body .caveat { color: #fbbf24; }
+</style>
+</head>
+<body>
+<div class="header">
+<h1>SCM Forecasting Methods Lab</h1>
+<div class="subtitle">Fisher College of Business | The Ohio State University</div>
+</div>
+<div class="container">
+<div class="panel left-panel">
+<div class="section">
+<div class="section-title">1. Data Input</div>
+<div class="form-group">
+<label class="checkbox-group">
+<input type="checkbox" id="useSample" onchange="handleUseSample()">
+Use Sample Data (156 weeks)
+</label>
+</div>
+<div class="form-group">
+<label for="csvFile">Or Upload CSV</label>
+<input type="file" id="csvFile" accept=".csv" onchange="handleCSVUpload()">
+</div>
+<div id="previewSection" style="display:none;">
+<div class="section-title">Data Preview</div>
+<div id="previewTable"></div>
+</div>
+</div>
+<div class="section">
+<div class="section-title">2. Method</div>
+<div class="form-group">
+<select id="method" onchange="handleMethodChange()">
+<option value="naive">Naive</option>
+<option value="seasonal_naive">Seasonal Naive</option>
+<option value="sma">Simple Moving Average</option>
+<option value="ses">Simple Exponential Smoothing</option>
+<option value="holt">Holt Linear</option>
+<option value="holt_winters">Holt-Winters</option>
+<option value="arima">ARIMA</option>
+<option value="sarima">SARIMA</option>
+<option value="arimax">ARIMAX</option>
+<option value="auto_arima">Auto ARIMA</option>
+</select>
+</div>
+</div>
+<div class="section" id="parameterSection">
+<div class="section-title">3. Parameters</div>
+<div id="parameters"></div>
+<div class="form-group" id="optimizeSection" style="display:none;margin-top:12px;">
+<label class="checkbox-group">
+<input type="checkbox" id="optimize">
+Optimize (find best parameters by minimizing AIC/SSE)
+</label>
+</div>
+</div>
+<div class="section" id="exogSection" style="display:none;">
+<div class="section-title">4. Exogenous Variable</div>
+<div class="form-group">
+<select id="exogColumn"></select>
+</div>
+</div>
+<div class="section">
+<div class="button" onclick="runForecast()">Run Forecast</div>
+<div id="error"></div>
+<div id="optimizedParams" style="display:none;margin-top:12px;background:#1a1d26;border:1px solid #2dd4bf;padding:10px;border-radius:2px;font-size:12px;color:#2dd4bf;"></div>
+</div>
+</div>
+<div class="panel right-panel">
+<div class="chart-container">
+<canvas id="forecastChart"></canvas>
+</div>
+<div class="chart-container">
+<div id="forecastNote" style="display:none;background:#1a1d26;border:1px solid #2dd4bf;color:#8b94a3;padding:10px;border-radius:2px;font-size:12px;margin-bottom:12px;"></div>
+<table class="forecast-table" id="forecastTable">
+<thead><tr><th>Period</th><th>Forecast</th></tr></thead>
+<tbody></tbody>
+</table>
+</div>
+<div class="emissions-card">
+<h3>This Request</h3>
+<div class="emission-value" id="emissionValue">-</div>
+<div class="emission-label">grams CO₂eq</div>
+<div class="comparison" id="comparison">-</div>
+<div class="scales-grid">
+<div class="scale-item">
+<h4>10K Users / Day</h4>
+<div class="scale-value" id="scale10k">-</div>
+<div class="scale-unit">g/day</div>
+<div class="comparison" id="scale10kAnalogy" style="font-size:11px;margin-top:4px;">-</div>
+</div>
+<div class="scale-item">
+<h4>500K Users / Day</h4>
+<div class="scale-value" id="scale500k">-</div>
+<div class="scale-unit">g/day</div>
+<div class="comparison" id="scale500kAnalogy" style="font-size:11px;margin-top:4px;">-</div>
+</div>
+</div>
+<div class="methodology-toggle" onclick="toggleMethodology()">
+<span class="arrow" id="methArrow">&#9654;</span> How are these emissions calculated?
+</div>
+<div class="methodology-body" id="methBody">
+
+<h4>What we measure</h4>
+Each forecast request consumes CPU, GPU, and RAM power on the server. <a href="https://mlco2.github.io/codecarbon/" style="color:#2dd4bf;">CodeCarbon</a> wraps each call, sampling hardware power draw every 1 second, then converts energy consumed into CO2 equivalent:
+<ul>
+<li><strong>CPU power:</strong> Read via Intel RAPL when available; falls back to TDP estimation on cloud VMs.</li>
+<li><strong>GPU power:</strong> Read via NVIDIA NVML when present; zero on CPU-only instances.</li>
+<li><strong>RAM power:</strong> Estimated from total system RAM (~0.3725 W/GB).</li>
+<li><strong>Conversion:</strong> <code>CO2eq = energy (kWh) &times; grid intensity (kg CO2/kWh)</code></li>
+<li><strong>Grid intensity:</strong> Auto-detected by region. Ohio: ~0.39 kg CO2/kWh (annual average).</li>
+</ul>
+
+<h4>At-scale projections</h4>
+<code>annual = emissions_per_request &times; users &times; 5 requests/user/day &times; 365</code><br>
+The "5 requests/user/day" is an assumed usage rate for analysts running forecasts. A single request costs almost nothing &mdash; the projections show how those tiny costs compound at organizational scale.
+
+<h4 class="caveat">Caveats</h4>
+<ul>
+<li class="caveat"><strong>Measurement floor:</strong> CodeCarbon's 1-second minimum means even a 10ms forecast gets billed for ~1s of full system power. This overstates per-request emissions for fast methods.</li>
+<li class="caveat"><strong>Hardware mismatch:</strong> Measurements here reflect the current server hardware. A different deployment (e.g. cloud VM) would produce different numbers.</li>
+<li class="caveat"><strong>Grid intensity is static:</strong> Real carbon intensity varies by time of day, season, and renewable generation. CodeCarbon uses a regional annual average.</li>
+</ul>
+
+<h4>Why this matters</h4>
+Every computation has a physical cost. ERP systems, route optimizers, demand planners, ML pipelines &mdash; they all consume energy. The question is whether you're measuring it.
+</div>
+</div>
+<div class="aggregate-card">
+<h3><span class="status-dot" id="statusDot"></span> Class Aggregate (Live)</h3>
+<div class="aggregate-stats">
+<div class="stat-item">
+<div class="stat-value" id="aggRequests">-</div>
+<div class="stat-label">Requests</div>
+</div>
+<div class="stat-item">
+<div class="stat-value" id="aggTotal">-</div>
+<div class="stat-label">Total (mg)</div>
+</div>
+<div class="stat-item">
+<div class="stat-value" id="aggAvg">-</div>
+<div class="stat-label">Avg / Request (mg)</div>
+</div>
+</div>
+<div class="comparison" id="aggComparison" style="margin-bottom:12px;">-</div>
+<div class="section-title">Class at-scale Projections</div>
+<div class="scales-grid">
+<div class="scale-item">
+<h4>10K Users / Year</h4>
+<div class="scale-value" id="aggScale10k">-</div>
+<div class="scale-unit">kg/yr</div>
+<div class="comparison" id="aggScale10kAnalogy" style="font-size:11px;margin-top:4px;">-</div>
+</div>
+<div class="scale-item">
+<h4>500K Users / Year</h4>
+<div class="scale-value" id="aggScale500k">-</div>
+<div class="scale-unit">kg/yr</div>
+<div class="comparison" id="aggScale500kAnalogy" style="font-size:11px;margin-top:4px;">-</div>
+</div>
+</div>
+</div>
+</div>
+<script>
+const API_BASE = "http://192.168.86.38:8010";
+let chart = null;
+let yData = [];
+let dates = [];
+let exogData = {};
+let exogColumns = [];
+
+const SAMPLE_DATA = {
+headers: ["week", "date", "demand", "temperature_f"],
+data: [
+[1,"2022-01-03",593.22,60.60],[2,"2022-01-10",577.56,60.04],[3,"2022-01-17",596.27,58.61],[4,"2022-01-24",616.08,67.61],[5,"2022-01-31",568.98,66.02],[6,"2022-02-07",564.79,74.40],[7,"2022-02-14",604.96,78.37],[8,"2022-02-21",578.64,74.99],[9,"2022-02-28",540.91,82.58],[10,"2022-03-07",558.74,82.81],[11,"2022-03-14",556.61,81.11],[12,"2022-03-21",562.12,77.04],[13,"2022-03-28",569.62,71.60],[14,"2022-04-04",584.06,66.02],[15,"2022-04-11",606.15,60.21],[16,"2022-04-18",636.30,52.68],[17,"2022-04-25",673.22,43.27],[18,"2022-05-02",713.25,31.88],[19,"2022-05-09",745.44,22.13],[20,"2022-05-16",759.24,25.92],[21,"2022-05-23",748.87,36.69],[22,"2022-05-30",721.65,47.98],[23,"2022-06-06",685.94,57.57],[24,"2022-06-13",647.88,64.57],[25,"2022-06-20",608.96,69.25],[26,"2022-06-27",567.66,72.20],[27,"2022-07-04",528.35,74.12],[28,"2022-07-11",490.73,75.33],[29,"2022-07-18",452.08,75.70],[30,"2022-07-25",421.65,75.23],[31,"2022-08-01",408.78,73.77],[32,"2022-08-08",418.94,71.22],[33,"2022-08-15",449.75,67.27],[34,"2022-08-22",501.75,61.81],[35,"2022-08-29",570.34,54.48],[36,"2022-09-05",645.46,45.50],[37,"2022-09-12",710.56,36.15],[38,"2022-09-19",758.13,28.01],[39,"2022-09-26",787.19,22.70],[40,"2022-10-03",799.67,21.65],[41,"2022-10-10",797.70,25.73],[42,"2022-10-17",785.23,34.00],[43,"2022-10-24",765.72,44.29],[44,"2022-10-31",740.56,54.53],[45,"2022-11-07",710.39,63.39],[46,"2022-11-14",674.65,69.75],[47,"2022-11-21",632.46,73.07],[48,"2022-11-28",584.51,73.84],[49,"2022-12-05",535.28,72.44],[50,"2022-12-12",492.24,69.65],[51,"2022-12-19",460.85,66.01],[52,"2022-12-26",442.47,61.76],[53,"2023-01-02",599.33,56.78],[54,"2023-01-09",581.48,51.21],[55,"2023-01-16",603.85,46.26],[56,"2023-01-23",628.96,42.49],[57,"2023-01-30",573.25,40.43],[58,"2023-02-06",570.47,40.37],[59,"2023-02-13",618.71,43.01],[60,"2023-02-20",590.28,49.05],[61,"2023-02-27",555.14,57.31],[62,"2023-03-06",524.30,65.70],[63,"2023-03-13",511.71,71.99],[64,"2023-03-20",523.24,74.88],[65,"2023-03-27",544.34,74.82],[66,"2023-04-03",579.28,72.32],[67,"2023-04-10",632.50,67.38],[68,"2023-04-17",696.54,59.81],[69,"2023-04-24",750.82,49.73],[70,"2023-05-01",785.49,37.46],[71,"2023-05-08",802.25,23.43],[72,"2023-05-15",797.29,22.19],[73,"2023-05-22",773.49,32.12],[74,"2023-05-29",736.36,44.52],[75,"2023-06-05",693.68,57.03],[76,"2023-06-12",650.41,67.31],[77,"2023-06-19",610.91,73.85],[78,"2023-06-26",577.01,76.73],[79,"2023-07-03",553.73,76.40],[80,"2023-07-10",543.86,73.81],[81,"2023-07-17",546.47,70.24],[82,"2023-07-24",556.83,67.10],[83,"2023-07-31",574.47,65.68],[84,"2023-08-07",603.35,65.66],[85,"2023-08-14",662.18,65.13],[86,"2023-08-21",742.85,62.13],[87,"2023-08-28",835.22,56.53],[88,"2023-09-04",927.36,47.80],[89,"2023-09-11",996.37,35.49],[90,"2023-09-18",1024.14,23.09],[91,"2023-09-25",1017.56,13.82],[92,"2023-10-02",991.90,19.26],[93,"2023-10-09",950.20,30.71],[94,"2023-10-16",890.37,45.41],[95,"2023-10-23",819.15,59.56],[96,"2023-10-30",746.01,71.39],[97,"2023-11-06",682.81,79.25],[98,"2023-11-13",639.25,82.29],[99,"2023-11-20",620.51,80.88],[100,"2023-11-27",628.54,76.25],[101,"2023-12-04",659.72,70.11],[102,"2023-12-11",705.22,64.00],[103,"2023-12-18",749.59,60.19],[104,"2023-12-25",779.96,60.15],[105,"2024-01-01",805.32,63.86],[106,"2024-01-08",820.28,69.39],[107,"2024-01-15",811.87,74.22],[108,"2024-01-22",776.36,78.11],[109,"2024-01-29",725.95,81.21],[110,"2024-02-05",679.32,83.00],[111,"2024-02-12",652.48,83.75],[112,"2024-02-19",660.29,82.79],[113,"2024-02-26",699.79,80.60],[114,"2024-03-04",774.45,77.69],[115,"2024-03-11",881.02,74.72],[116,"2024-03-18",1012.47,72.83],[117,"2024-03-25",1160.87,74.11],[118,"2024-04-01",1314.11,78.22],[119,"2024-04-08",1452.69,83.62],[120,"2024-04-15",1546.29,89.06],[121,"2024-04-22",1566.32,91.73],[122,"2024-04-29",1493.73,88.22],[123,"2024-05-06",1331.07,78.86],[124,"2024-05-13",1100.79,66.53],[125,"2024-05-20",848.36,53.83],[126,"2024-05-27",634.61,42.71],[127,"2024-06-03",531.53,35.01],[128,"2024-06-10",519.34,31.17],[129,"2024-06-17",575.11,30.66],[130,"2024-06-24",678.24,32.43],[131,"2024-07-01",823.53,36.04],[132,"2024-07-08",1000.50,41.01],[133,"2024-07-15",1194.81,47.58],[134,"2024-07-22",1387.09,55.09],[135,"2024-07-29",1542.52,63.37],[136,"2024-08-05",1633.97,71.28],[137,"2024-08-12",1650.03,77.89],[138,"2024-08-19",1597.88,81.32],[139,"2024-08-26",1503.00,81.17],[140,"2024-09-02",1382.75,78.26],[141,"2024-09-09",1264.43,73.32],[142,"2024-09-16",1166.65,67.95],[143,"2024-09-23",1102.16,62.77],[144,"2024-09-30",1078.44,57.42],[145,"2024-10-07",1095.69,52.40],[146,"2024-10-14",1146.12,46.20],[147,"2024-10-21",1216.07,38.65],[148,"2024-10-28",1284.18,31.11],[149,"2024-11-04",1329.92,25.27],[150,"2024-11-11",1346.22,22.80],[151,"2024-11-18",1336.68,24.00],[152,"2024-11-25",1315.23,27.59],[153,"2024-12-02",1303.35,32.08],[154,"2024-12-09",1318.20,36.96],[155,"2024-12-16",1361.31,42.50],[156,"2024-12-23",1425.15,49.12]
+]};
+
+function handleUseSample() {
+const useSample = document.getElementById('useSample').checked;
+if (useSample) {
+loadSampleData();
+}
+}
+
+function loadSampleData() {
+const headers = SAMPLE_DATA.headers;
+const data = SAMPLE_DATA.data;
+dates = data.slice(0, 156).map(r => r[1]);
+yData = data.slice(0, 156).map(r => parseFloat(r[2]));
+exogData = { temperature_f: data.slice(0, 156).map(r => parseFloat(r[3])) };
+exogColumns = ["temperature_f"];
+showPreview(headers, data);
+handleMethodChange();
+}
+
+function handleCSVUpload() {
+const fileInput = document.getElementById('csvFile');
+const file = fileInput.files[0];
+if (!file) return;
+Papa.parse(file, {
+header: true,
+dynamicTyping: true,
+skipEmptyLines: true,
+complete: function(results) {
+const headers = Object.keys(results.data[0]);
+const dataRows = results.data.slice(0, 200);
+const numericCols = headers.filter(h => typeof results.data[0][h] === 'number');
+const demandCol = numericCols.length > 0 ? numericCols[0] : headers[1];
+const dateCol = headers.includes('date') ? 'date' : headers[0];
+dates = dataRows.map(r => r[dateCol]);
+yData = dataRows.map(r => r[demandCol]);
+exogData = {};
+exogColumns = numericCols.filter(h => h !== demandCol);
+exogColumns.forEach(col => {
+exogData[col] = dataRows.map(r => r[col]);
+});
+showPreview(headers, results.data.slice(0, 10));
+handleMethodChange();
+}
+});
+}
+
+function showPreview(headers, data) {
+const section = document.getElementById('previewSection');
+section.style.display = 'block';
+const table = document.createElement('table');
+table.className = 'preview-table';
+const thead = '<tr>' + headers.slice(0, 4).map(h => '<th>' + h + '</th>').join('') + '</tr>';
+const tbody = data.slice(0, 5).map(row => {
+const isArray = Array.isArray(row);
+const vals = headers.slice(0, 4).map((h, idx) => {
+const v = isArray ? row[idx] : row[h];
+return typeof v === 'number' ? v.toFixed(2) : v;
+});
+return '<tr>' + vals.map(v => '<td>' + v + '</td>').join('') + '</tr>';
+}).join('');
+table.innerHTML = thead + '<tbody>' + tbody + '</tbody>';
+document.getElementById('previewTable').innerHTML = '';
+document.getElementById('previewTable').appendChild(table);
+}
+
+function handleMethodChange() {
+const method = document.getElementById('method').value;
+const params = {};
+const exogSection = document.getElementById('exogSection');
+const optimizeSection = document.getElementById('optimizeSection');
+const canOptimize = ['ses','holt','holt_winters','arima','sarima','arimax'].includes(method);
+optimizeSection.style.display = canOptimize ? 'block' : 'none';
+if (!canOptimize) document.getElementById('optimize').checked = false;
+if (method === 'arimax') {
+exogSection.style.display = 'block';
+const exogSelect = document.getElementById('exogColumn');
+exogSelect.innerHTML = exogColumns.map(c => '<option value="' + c + '">' + c + '</option>').join('');
+if (exogColumns.length === 0) {
+exogSelect.innerHTML = '<option value="">(No exog columns available)</option>';
+}
+} else {
+exogSection.style.display = 'none';
+}
+switch(method) {
+case 'naive':
+paramsHTML = '';
+break;
+case 'seasonal_naive':
+paramsHTML = '<div class="form-group"><label>Season Length</label><input type="number" id="season" value="52" min="1"></div>';
+break;
+case 'sma':
+paramsHTML = '<div class="form-group"><label>Window</label><input type="number" id="window" value="4" min="1"></div>';
+break;
+case 'ses':
+paramsHTML = '<div class="form-group"><label>Alpha (0-1)</label><input type="number" id="alpha" value="0.3" min="0" max="1" step="0.1"></div>';
+break;
+case 'holt':
+paramsHTML = '<div class="parameter-row"><div class="form-group"><label>Alpha</label><input type="number" id="alpha" value="0.3" min="0" max="1" step="0.1"></div><div class="form-group"><label>Beta</label><input type="number" id="beta" value="0.1" min="0" max="1" step="0.1"></div></div>';
+break;
+case 'holt_winters':
+paramsHTML = '<div class="parameter-row"><div class="form-group"><label>Alpha</label><input type="number" id="alpha" value="0.3" min="0" max="1" step="0.1"></div><div class="form-group"><label>Beta</label><input type="number" id="beta" value="0.1" min="0" max="1" step="0.1"></div><div class="form-group"><label>Gamma</label><input type="number" id="gamma" value="0.1" min="0" max="1" step="0.1"></div></div><div class="form-group" style="margin-top:12px;"><label>Seasonal Periods</label><input type="number" id="seasonal_periods" value="52" min="1"></div><div class="parameter-row"><div class="form-group"><label>Trend</label><select id="trend"><option value="add">Add</option><option value="mul">Mul</option></select></div><div class="form-group"><label>Seasonal</label><select id="seasonal"><option value="add">Add</option><option value="mul">Mul</option></select></div></div>';
+break;
+case 'arima':
+paramsHTML = '<div class="parameter-row"><div class="form-group"><label>p</label><input type="number" id="p" value="1" min="0"></div><div class="form-group"><label>d</label><input type="number" id="d" value="1" min="0"></div><div class="form-group"><label>q</label><input type="number" id="q" value="1" min="0"></div></div>';
+break;
+case 'sarima':
+paramsHTML = '<div class="parameter-row"><div class="form-group"><label>p</label><input type="number" id="p" value="1" min="0"></div><div class="form-group"><label>d</label><input type="number" id="d" value="1" min="0"></div><div class="form-group"><label>q</label><input type="number" id="q" value="1" min="0"></div></div><div class="parameter-row" style="margin-top:12px;"><div class="form-group"><label>P</label><input type="number" id="P" value="1" min="0"></div><div class="form-group"><label>D</label><input type="number" id="D" value="1" min="0"></div><div class="form-group"><label>Q</label><input type="number" id="Q" value="1" min="0"></div></div><div class="form-group" style="margin-top:12px;"><label>s (period)</label><input type="number" id="s" value="52" min="1"></div>';
+break;
+case 'arimax':
+paramsHTML = '<div class="parameter-row"><div class="form-group"><label>p</label><input type="number" id="p" value="1" min="0"></div><div class="form-group"><label>d</label><input type="number" id="d" value="1" min="0"></div><div class="form-group"><label>q</label><input type="number" id="q" value="1" min="0"></div></div>';
+break;
+case 'auto_arima':
+paramsHTML = '<div class="parameter-row"><div class="form-group"><label>max_p</label><input type="number" id="max_p" value="3" min="1"></div><div class="form-group"><label>max_q</label><input type="number" id="max_q" value="3" min="1"></div></div><div class="form-group" style="margin-top:12px;"><label class="checkbox-group"><input type="checkbox" id="seasonal" onchange="toggleSeasonalM()">Seasonal</label></div><div class="form-group" id="mSection" style="display:none;"><label>m (seasonal period)</label><input type="number" id="m" value="52" min="1"></div>';
+break;
+}
+document.getElementById('parameters').innerHTML = paramsHTML;
+}
+
+function toggleSeasonalM() {
+const seasonal = document.getElementById('seasonal').checked;
+document.getElementById('mSection').style.display = seasonal ? 'block' : 'none';
+}
+
+function getParams() {
+const method = document.getElementById('method').value;
+switch(method) {
+case 'naive': return {};
+case 'seasonal_naive': return { season: parseInt(document.getElementById('season').value) };
+case 'sma': return { window: parseInt(document.getElementById('window').value) };
+case 'ses': return { alpha: parseFloat(document.getElementById('alpha').value) };
+case 'holt': return { alpha: parseFloat(document.getElementById('alpha').value), beta: parseFloat(document.getElementById('beta').value) };
+case 'holt_winters': return {
+alpha: parseFloat(document.getElementById('alpha').value),
+beta: parseFloat(document.getElementById('beta').value),
+gamma: parseFloat(document.getElementById('gamma').value),
+seasonal_periods: parseInt(document.getElementById('seasonal_periods').value),
+trend: document.getElementById('trend').value,
+seasonal: document.getElementById('seasonal').value
+};
+case 'arima': return { p: parseInt(document.getElementById('p').value), d: parseInt(document.getElementById('d').value), q: parseInt(document.getElementById('q').value) };
+case 'sarima': return {
+p: parseInt(document.getElementById('p').value),
+d: parseInt(document.getElementById('d').value),
+q: parseInt(document.getElementById('q').value),
+P: parseInt(document.getElementById('P').value),
+D: parseInt(document.getElementById('D').value),
+Q: parseInt(document.getElementById('Q').value),
+s: parseInt(document.getElementById('s').value)
+};
+case 'arimax': return { p: parseInt(document.getElementById('p').value), d: parseInt(document.getElementById('d').value), q: parseInt(document.getElementById('q').value) };
+case 'auto_arima': return {
+max_p: parseInt(document.getElementById('max_p').value),
+max_q: parseInt(document.getElementById('max_q').value),
+seasonal: document.getElementById('seasonal').checked,
+m: parseInt(document.getElementById('m').value)
+};
+default: return {};
+}
+}
+
+function runForecast() {
+const errorDiv = document.getElementById('error');
+errorDiv.innerHTML = '';
+if (yData.length === 0) {
+errorDiv.innerHTML = '<div class="error-message">Please load data first (use sample or upload CSV)</div>';
+return;
+}
+const method = document.getElementById('method').value;
+const params = getParams();
+let exog = null;
+if (method === 'arimax') {
+const exogCol = document.getElementById('exogColumn').value;
+if (!exogCol || !exogData[exogCol]) {
+errorDiv.innerHTML = '<div class="error-message">Please select an exogenous variable</div>';
+return;
+}
+exog = exogData[exogCol];
+}
+const optimize = document.getElementById('optimize').checked;
+const payload = { method: method, params: params, y: yData, exog: exog, optimize: optimize };
+fetch(API_BASE + '/api/forecast', {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify(payload)
+})
+.then(res => res.json())
+.then(data => {
+if (data.forecast_result && data.forecast_result.error) {
+errorDiv.innerHTML = '<div class="error-message">Error: ' + data.forecast_result.error + '</div>';
+return;
+}
+updateChart(data.forecast_result);
+updateForecastTable(data.forecast_result);
+updateEmissions(data.emissions, data.comparison, data.scales);
+const optDiv = document.getElementById('optimizedParams');
+if (data.forecast_result.optimized_params) {
+const op = data.forecast_result.optimized_params;
+const entries = Object.entries(op).map(([k,v]) => k + '=' + v).join(', ');
+optDiv.style.display = 'block';
+optDiv.innerHTML = '<strong>Optimized:</strong> ' + entries + ' | AIC: ' + (data.forecast_result.aic !== null ? data.forecast_result.aic.toFixed(2) : 'N/A');
+} else {
+optDiv.style.display = 'none';
+}
+})
+.catch(err => {
+errorDiv.innerHTML = '<div class="error-message">Backend error: ' + err.message + '. Check if server is running.</div>';
+});
+}
+
+function updateChart(result) {
+const ctx = document.getElementById('forecastChart').getContext('2d');
+const historical = yData;
+const forecast = result.forecast;
+const fitted = result.fitted || [];
+const labels = dates;
+const histSlice = Math.min(50, labels.length);
+const forecastLabels = Array.from({length: 12}, (_, i) => 'F' + (i + 1));
+const allLabels = [...labels.slice(-histSlice), ...forecastLabels];
+const allHistorical = [...historical.slice(-histSlice), ...Array(12).fill(null)];
+const allForecast = [...Array(histSlice).fill(null), ...forecast];
+const allFitted = fitted.length ? [...fitted.slice(-histSlice), ...Array(12).fill(null)] : [];
+if (chart) {
+chart.destroy();
+}
+chart = new Chart(ctx, {
+type: 'line',
+data: {
+labels: allLabels,
+datasets: [
+{ label: 'Historical', data: allHistorical, borderColor: '#2dd4bf', backgroundColor: '#2dd4bf', tension: 0, pointRadius: 0 },
+{ label: 'Forecast', data: allForecast, borderColor: '#94a3b8', backgroundColor: '#94a3b8', borderDash: [5, 5], tension: 0, pointRadius: 0 },
+...(allFitted.length ? [{ label: 'Model Fit', data: allFitted, borderColor: '#4a5568', backgroundColor: '#4a5568', borderDash: [2, 2], tension: 0, pointRadius: 0 }] : [])
+]
+},
+options: {
+responsive: true,
+maintainAspectRatio: false,
+interaction: { mode: 'index', intersect: false },
+plugins: { legend: { labels: { color: '#e0e0e0' } } },
+scales: {
+x: { ticks: { color: '#8b94a3', maxTicksLimit: 10 }, grid: { color: '#2d3342' } },
+y: { ticks: { color: '#8b94a3' }, grid: { color: '#2d3342' } }
+}
+}
+});
+}
+
+function toggleMethodology() {
+const body = document.getElementById('methBody');
+const arrow = document.getElementById('methArrow');
+body.classList.toggle('open');
+arrow.classList.toggle('open');
+}
+
+function updateForecastTable(result) {
+const noteEl = document.getElementById('forecastNote');
+if (result.note) {
+noteEl.style.display = 'block';
+noteEl.textContent = result.note;
+} else {
+noteEl.style.display = 'none';
+}
+const tbody = document.querySelector('#forecastTable tbody');
+const rows = result.forecast.map((f, i) => {
+return '<tr><td class="monospace">' + (i + 1) + '</td><td class="monospace">' + f.toFixed(2) + '</td></tr>';
+}).join('');
+tbody.innerHTML = rows;
+}
+
+// --- Smart unit formatter ---
+function fmtG(grams) {
+if (grams < 0.001) return (grams * 1000000).toFixed(1) + ' \u00b5g';
+if (grams < 1) return (grams * 1000).toFixed(1) + ' mg';
+if (grams < 1000) return grams.toFixed(2) + ' g';
+return (grams / 1000).toFixed(2) + ' kg';
+}
+function fmtKg(kg) {
+if (kg < 0.001) return (kg * 1000000).toFixed(1) + ' mg';
+if (kg < 1) return (kg * 1000).toFixed(1) + ' g';
+if (kg < 1000) return kg.toFixed(2) + ' kg';
+return (kg / 1000).toFixed(2) + ' t';
+}
+
+// --- Comparison tables: each threshold has multiple rotating labels ---
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function getComparison(value, table, fallback) {
+for (const c of table) {
+if (value < c.t) return '≈ ' + pick(c.l);
+}
+return '≈ ' + pick(fallback);
+}
+
+// Per-request comparison (grams, tiny values)
+const REQUEST_CMP = [
+{t:0.001, l:['less than a single breath','less than blinking once','less than a mosquito flapping its wings']},
+{t:0.01, l:['one second of a phone screen','a single heartbeat of energy','the weight of a raindrop in CO2']},
+{t:0.1, l:['sending about 10 plain-text emails','a few seconds of streaming music','scrolling social media for 30 seconds']},
+{t:0.5, l:['streaming 30 seconds of video','microwaving food for 2 seconds','one Google search']},
+{t:1.0, l:['charging a smartphone for one minute','brewing a single-serve coffee pod','reading an e-book for 30 minutes']},
+{t:5.0, l:['boiling a small cup of water','running a ceiling fan for an hour','toasting two slices of bread']},
+{t:10.0, l:['running a LED bulb for one hour','vacuuming for 5 minutes','one load in a dishwasher']},
+{t:50.0, l:['driving a car about 200 meters','a 10-minute hot shower','drying one load of laundry']},
+{t:200.0, l:['a short domestic flight per passenger','mowing a lawn once','heating a home for an hour in winter']},
+];
+const REQUEST_FALLBACK = ['more than a cross-country flight','more than a transatlantic flight per passenger'];
+
+// Daily at-scale (grams)
+const DAILY_CMP = [
+{t:1, l:['a few human breaths','lifting a paperclip','a fruit fly\'s lifetime of CO2']},
+{t:10, l:['charging a phone once','running a nightlight all evening','one minute of a hair dryer']},
+{t:50, l:['running a laptop for an hour','a 5-minute shower','leaving a TV on standby for a week']},
+{t:100, l:['a short car trip (0.5 km)','running a microwave for 15 minutes','one elevator ride in a skyscraper']},
+{t:500, l:['a load of laundry','a 20-minute bus ride','cooking dinner on a gas stove']},
+{t:1000, l:['driving about 4 km','half an hour of air conditioning','mowing a small lawn']},
+{t:5000, l:['a one-way car commute (20 km)','heating a home for 2 hours','a short Uber ride across town']},
+{t:10000, l:['one day of heating a home','charging an electric car halfway','a round-trip crosstown taxi ride']},
+{t:50000, l:['a domestic round-trip flight per passenger','one month of home electricity','a week of daily car commuting']},
+{t:100000, l:['about a month of driving','a year of smartphone charging','manufacturing a new laptop']},
+];
+const DAILY_FALLBACK = ['more than a month of driving','manufacturing a small car'];
+
+// Annual at-scale (kg)
+const ANNUAL_CMP = [
+{t:0.1, l:['charging a phone for a year','one year of LED lightbulb use','a year of standby power for a TV']},
+{t:1, l:['a few car trips','a weekend camping trip\'s campfire','one tank of gas for a lawnmower']},
+{t:10, l:['one month of home electricity','a short domestic flight','manufacturing one pair of jeans']},
+{t:100, l:['a cross-country round-trip flight','one month of natural gas heating','about 400 km of driving']},
+{t:500, l:['about 3 months of driving','heating a home for a winter','a year of grocery shopping trips']},
+{t:1000, l:['half the annual footprint of one American','one transatlantic round-trip flight','manufacturing 2-3 smartphones']},
+{t:5000, l:['the annual footprint of one American','about 20,000 km of driving','a year of home energy use']},
+{t:10000, l:['about 2 Americans\' annual footprints','one year of a large SUV','a small wedding\'s carbon footprint']},
+{t:50000, l:['a small office building for a year','10 Americans\' annual footprints','a year of running a restaurant']},
+{t:100000, l:['about 20 Americans\' annual footprints','a commercial building for a year','one SpaceX Falcon 9 launch']},
+{t:500000, l:['a small factory for a year','100 Americans\' annual footprints','a large concert tour']},
+{t:1000000, l:['a large factory for a year','200 Americans\' annual footprints','operating a cruise ship for a month']},
+];
+const ANNUAL_FALLBACK = ['a small city\'s annual footprint','multiple factory-years of emissions'];
+
+// Aggregate session total (grams)
+const AGG_CMP = [
+{t:0.001, l:['less than a grain of sand falling 1 cm','less than an ant walking one step','a hummingbird\'s single wingbeat']},
+{t:0.01, l:['about one human breath','a single keystroke on a laptop','one blink of an LED indicator']},
+{t:0.1, l:['sending a few text emails','10 seconds of a phone screen','reading one web page']},
+{t:0.5, l:['charging a phone for a few seconds','one Google search','3 seconds of streaming video']},
+{t:1.0, l:['one minute of a LED lightbulb','a single text message with photo','printing one page']},
+{t:5.0, l:['boiling water for a cup of tea','toasting a slice of bread','vacuuming for 2 minutes']},
+{t:10.0, l:['running a laptop for about 15 minutes','a 2-minute hot shower','microwaving a meal']},
+{t:50.0, l:['driving a car about 200 meters','one load in a washing machine','running a space heater for 10 minutes']},
+{t:100.0, l:['a load of laundry start to finish','a 10-minute car trip','running a dishwasher cycle']},
+{t:500.0, l:['a short Uber ride','an hour of air conditioning','cooking Thanksgiving dinner']},
+{t:1000.0, l:['one passenger-mile on a domestic flight','a day of home electricity','charging an EV for 50 km']},
+{t:5000.0, l:['a cross-town bus trip','a week of commuting by car','manufacturing a pair of sneakers']},
+{t:10000.0, l:['the average American\'s emissions in 30 seconds','a short domestic flight segment','one month of home natural gas']},
+];
+const AGG_FALLBACK = ['more than half a minute of average American emissions','more than a domestic flight segment'];
+
+function updateEmissions(emissions, comparison, scales) {
+const s = scales;
+document.getElementById('emissionValue').textContent = emissions.emissions_g.toFixed(4);
+document.getElementById('comparison').textContent = getComparison(emissions.emissions_g, REQUEST_CMP, REQUEST_FALLBACK);
+document.getElementById('scale10k').textContent = fmtG(s['10k_users_daily_g']);
+document.getElementById('scale500k').textContent = fmtG(s['500k_users_daily_g']);
+document.getElementById('scale10kAnalogy').textContent = getComparison(s['10k_users_daily_g'], DAILY_CMP, DAILY_FALLBACK);
+document.getElementById('scale500kAnalogy').textContent = getComparison(s['500k_users_daily_g'], DAILY_CMP, DAILY_FALLBACK);
+}
+
+function updateAggregate(agg) {
+if (agg.n_requests === 0) return;
+document.getElementById('aggRequests').textContent = agg.n_requests.toLocaleString();
+document.getElementById('aggTotal').textContent = fmtG(agg.total_emissions_g);
+document.getElementById('aggAvg').textContent = fmtG(agg.avg_emissions_g_per_request);
+document.getElementById('aggComparison').textContent = getComparison(agg.total_emissions_g, AGG_CMP, AGG_FALLBACK);
+document.getElementById('aggScale10k').textContent = fmtKg(agg.scales['10k_users_annual_kg']);
+document.getElementById('aggScale500k').textContent = fmtKg(agg.scales['500k_users_annual_kg']);
+document.getElementById('aggScale10kAnalogy').textContent = getComparison(agg.scales['10k_users_annual_kg'], ANNUAL_CMP, ANNUAL_FALLBACK);
+document.getElementById('aggScale500kAnalogy').textContent = getComparison(agg.scales['500k_users_annual_kg'], ANNUAL_CMP, ANNUAL_FALLBACK);
+}
+
+async function pollAggregate() {
+try {
+const res = await fetch(API_BASE + '/api/aggregate');
+const data = await res.json();
+document.getElementById('statusDot').classList.remove('offline');
+updateAggregate(data);
+} catch (err) {
+document.getElementById('statusDot').classList.add('offline');
+}
+}
+
+handleMethodChange();
+pollAggregate();
+setInterval(pollAggregate, 15000);
+</script>
+<footer style="text-align:center;padding:20px;font-size:11px;color:#4a5568;">Built with Qwen3.5:27b via OpenCode | Carbon tracked with CodeCarbon</footer>
+</body>
+</html>

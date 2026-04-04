@@ -1,0 +1,6 @@
+fastapi
+uvicorn[standard]
+statsmodels
+pmdarima
+numpy
+pandas
