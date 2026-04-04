@@ -1,5 +1,7 @@
 # Supply Chain Forecasting Methods & ML/AI Emissions
 
+**Live demo:** https://supply-chain-ai-research-tosu.github.io/digital_sc_emissions/
+
 A live forecasting tools catalog that demonstrates the carbon footprint of ML/AI operations. Built for graduate supply chain management courses at OSU Fisher College of Business.
 
 ## Purpose
