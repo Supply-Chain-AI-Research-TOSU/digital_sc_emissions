@@ -1,10 +1,34 @@
+import gc
 import itertools
+import signal
 import warnings
 import numpy as np
 import pandas as pd
 from statsmodels.tsa.holtwinters import SimpleExpSmoothing, ExponentialSmoothing
 from statsmodels.tsa.arima.model import ARIMA
 from pmdarima import auto_arima
+
+
+class ForecastTimeout(Exception):
+    pass
+
+
+def _timeout_handler(signum, frame):
+    raise ForecastTimeout("Forecast timed out")
+
+
+def run_with_timeout(func, timeout_s, *args, **kwargs):
+    """Run a function with a timeout (Unix only)."""
+    old_handler = signal.signal(signal.SIGALRM, _timeout_handler)
+    signal.alarm(timeout_s)
+    try:
+        result = func(*args, **kwargs)
+    except ForecastTimeout:
+        return {"error": f"Forecast timed out after {timeout_s} seconds. Try simpler parameters.", "method_label": "timeout"}
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, old_handler)
+    return result
 
 
 def run_forecast(
@@ -76,13 +100,15 @@ def run_forecast(
         elif method == "sarima":
             s = params.get("s", 52)
             if optimize:
+                s = min(s, 26)  # cap seasonal period to prevent OOM
                 max_p = params.get("max_p", 1)
                 max_d = params.get("max_d", 1)
                 max_q = params.get("max_q", 1)
                 max_P = params.get("max_P", 1)
                 max_D = params.get("max_D", 1)
                 max_Q = params.get("max_Q", 1)
-                return _sarima_optimized(
+                return run_with_timeout(
+                    _sarima_optimized, 120,
                     y_array, max_p, max_d, max_q, max_P, max_D, max_Q, s, horizon
                 )
             p = params.get("p", 1)
@@ -114,7 +140,10 @@ def run_forecast(
             max_q = params.get("max_q", 2)
             seasonal = params.get("seasonal", False)
             m = params.get("m", 52 if seasonal else 1)
-            return _auto_arima(y_array, max_p, max_q, seasonal, m, horizon)
+            return run_with_timeout(
+                _auto_arima, 120,
+                y_array, max_p, max_q, seasonal, m, horizon
+            )
 
         else:
             return {"error": f"Unknown method: {method}", "method_label": method}
@@ -360,6 +389,8 @@ def _sarima_optimized(
                     best_model = m
             except Exception:
                 continue
+            finally:
+                gc.collect()
     if best_model is None:
         return {"error": "No SARIMA order converged during optimization", "method_label": "SARIMA (optimized)"}
     (p, d, q), (P, D, Q, s) = best_orders
