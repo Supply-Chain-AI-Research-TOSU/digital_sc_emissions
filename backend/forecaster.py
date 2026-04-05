@@ -1,6 +1,6 @@
 import gc
 import itertools
-import signal
+import threading
 import warnings
 import numpy as np
 import pandas as pd
@@ -9,26 +9,25 @@ from statsmodels.tsa.arima.model import ARIMA
 from pmdarima import auto_arima
 
 
-class ForecastTimeout(Exception):
-    pass
-
-
-def _timeout_handler(signum, frame):
-    raise ForecastTimeout("Forecast timed out")
-
-
 def run_with_timeout(func, timeout_s, *args, **kwargs):
-    """Run a function with a timeout (Unix only)."""
-    old_handler = signal.signal(signal.SIGALRM, _timeout_handler)
-    signal.alarm(timeout_s)
-    try:
-        result = func(*args, **kwargs)
-    except ForecastTimeout:
+    """Run a function with a timeout using a thread."""
+    result = [None]
+    error = [None]
+
+    def target():
+        try:
+            result[0] = func(*args, **kwargs)
+        except Exception as e:
+            error[0] = e
+
+    t = threading.Thread(target=target)
+    t.start()
+    t.join(timeout=timeout_s)
+    if t.is_alive():
         return {"error": f"Forecast timed out after {timeout_s} seconds. Try simpler parameters.", "method_label": "timeout"}
-    finally:
-        signal.alarm(0)
-        signal.signal(signal.SIGALRM, old_handler)
-    return result
+    if error[0]:
+        return {"error": str(error[0]), "method_label": func.__name__}
+    return result[0]
 
 
 def run_forecast(
