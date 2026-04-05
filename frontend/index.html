@@ -183,7 +183,6 @@ This compute stack is a teaching analogy for a physical supply chain.
 <option value="arima">ARIMA</option>
 <option value="sarima">SARIMA</option>
 <option value="arimax">ARIMAX</option>
-<option value="auto_arima">Auto ARIMA</option>
 </select>
 </div>
 </div>
@@ -420,16 +419,8 @@ break;
 case 'arimax':
 paramsHTML = '<div class="parameter-row"><div class="form-group"><label>p</label><input type="number" id="p" value="1" min="0"></div><div class="form-group"><label>d</label><input type="number" id="d" value="1" min="0"></div><div class="form-group"><label>q</label><input type="number" id="q" value="1" min="0"></div></div>';
 break;
-case 'auto_arima':
-paramsHTML = '<div class="parameter-row"><div class="form-group"><label>max_p</label><input type="number" id="max_p" value="2" min="1"></div><div class="form-group"><label>max_q</label><input type="number" id="max_q" value="2" min="1"></div></div><div class="form-group" style="margin-top:12px;"><label class="checkbox-group"><input type="checkbox" id="seasonal" onchange="toggleSeasonalM()">Seasonal</label></div><div class="form-group" id="mSection" style="display:none;"><label>m (seasonal period)</label><input type="number" id="m" value="52" min="1"></div>';
-break;
 }
 document.getElementById('parameters').innerHTML = paramsHTML;
-}
-
-function toggleSeasonalM() {
-const seasonal = document.getElementById('seasonal').checked;
-document.getElementById('mSection').style.display = seasonal ? 'block' : 'none';
 }
 
 function getParams() {
@@ -459,12 +450,6 @@ Q: parseInt(document.getElementById('Q').value),
 s: parseInt(document.getElementById('s').value)
 };
 case 'arimax': return { p: parseInt(document.getElementById('p').value), d: parseInt(document.getElementById('d').value), q: parseInt(document.getElementById('q').value) };
-case 'auto_arima': return {
-max_p: parseInt(document.getElementById('max_p').value),
-max_q: parseInt(document.getElementById('max_q').value),
-seasonal: document.getElementById('seasonal').checked,
-m: parseInt(document.getElementById('m').value)
-};
 default: return {};
 }
 }
@@ -474,7 +459,6 @@ sarima: 'SARIMA optimization fits ~54 models with s=52 seasonal state space. Thi
 arima: 'ARIMA optimization performs a grid search across all (p,d,q) combinations. This may take 30-60 seconds.',
 arimax: 'ARIMAX optimization performs a grid search across all (p,d,q) combinations with exogenous variables. This may take 30-60 seconds.',
 holt_winters: 'Holt-Winters optimization with seasonal period=52 can take 15-30 seconds.',
-auto_arima: 'Auto ARIMA uses stepwise search to find the best model. With seasonal=true and m=52, this can take several minutes.',
 };
 
 function confirmOptimize(method) {

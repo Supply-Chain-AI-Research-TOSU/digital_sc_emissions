@@ -91,7 +91,6 @@ def forecast_endpoint(req: ForecastRequest):
         "arima",
         "sarima",
         "arimax",
-        "auto_arima",
     }
     if req.method not in allowed_methods:
         raise HTTPException(status_code=400, detail="Unsupported forecasting method")

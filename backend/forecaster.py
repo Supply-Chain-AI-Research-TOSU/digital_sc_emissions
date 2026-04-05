@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 from statsmodels.tsa.holtwinters import SimpleExpSmoothing, ExponentialSmoothing
 from statsmodels.tsa.arima.model import ARIMA
-from pmdarima import auto_arima
 
 
 def run_with_timeout(func, timeout_s, *args, **kwargs):
@@ -133,16 +132,6 @@ def run_forecast(
             d = params.get("d", 1)
             q = params.get("q", 1)
             return _arimax(y_array, exog_array, p, d, q, horizon)
-
-        elif method == "auto_arima":
-            max_p = params.get("max_p", 2)
-            max_q = params.get("max_q", 2)
-            seasonal = params.get("seasonal", False)
-            m = params.get("m", 52 if seasonal else 1)
-            return run_with_timeout(
-                _auto_arima, 120,
-                y_array, max_p, max_q, seasonal, m, horizon
-            )
 
         else:
             return {"error": f"Unknown method: {method}", "method_label": method}
@@ -433,27 +422,3 @@ def _arimax_optimized(
     }
 
 
-def _auto_arima(
-    y: np.ndarray, max_p: int, max_q: int, seasonal: bool, m: int, horizon: int
-) -> dict:
-    """Automatic ARIMA via pmdarima."""
-    kwargs = {
-        "max_p": max_p,
-        "max_q": max_q,
-        "seasonal": seasonal,
-        "trace": False,
-        "error_action": "ignore",
-        "approx": True,
-        "stepwise": True,
-    }
-    if seasonal:
-        kwargs["m"] = m
-
-    model = auto_arima(y, **kwargs)
-    forecast = model.predict(n_periods=horizon)
-    return {
-        "forecast": forecast.tolist(),
-        "fitted": model.fittedvalues().tolist(),
-        "aic": float(model.aic()),
-        "method_label": "Auto ARIMA" + (f" (seasonal, m={m})" if seasonal else ""),
-    }
