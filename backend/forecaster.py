@@ -76,9 +76,9 @@ def run_forecast(
         elif method == "sarima":
             s = params.get("s", 52)
             if optimize:
-                max_p = params.get("max_p", 2)
+                max_p = params.get("max_p", 1)
                 max_d = params.get("max_d", 1)
-                max_q = params.get("max_q", 2)
+                max_q = params.get("max_q", 1)
                 max_P = params.get("max_P", 1)
                 max_D = params.get("max_D", 1)
                 max_Q = params.get("max_Q", 1)
@@ -110,8 +110,8 @@ def run_forecast(
             return _arimax(y_array, exog_array, p, d, q, horizon)
 
         elif method == "auto_arima":
-            max_p = params.get("max_p", 3)
-            max_q = params.get("max_q", 3)
+            max_p = params.get("max_p", 2)
+            max_q = params.get("max_q", 2)
             seasonal = params.get("seasonal", False)
             m = params.get("m", 52 if seasonal else 1)
             return _auto_arima(y_array, max_p, max_q, seasonal, m, horizon)

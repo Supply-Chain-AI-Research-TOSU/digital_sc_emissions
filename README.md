@@ -79,7 +79,7 @@ Open http://localhost:8010 in your browser. The frontend is served from the same
 
 ### EC2 Instance Setup
 
-1. Launch t2.micro (Amazon Linux 2023, us-east-2)
+1. Launch t3.small (Amazon Linux 2023, us-east-2)
 2. Open port 8010 in security group (0.0.0.0/0)
 3. SSH into instance
 
