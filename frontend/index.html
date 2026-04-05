@@ -154,7 +154,7 @@ footer { color: var(--text-footer); }
 <div class="methodology-body" id="tldrBody" style="margin-top:8px;line-height:1.7;">
 This compute stack is a teaching analogy for a physical supply chain.
 <strong class="accent-text">Scope 1</strong> is the electricity consumed by each forecast request — you own the server, you triggered the compute, just like fuel burned by your own fleet. We measure this live with CodeCarbon on every request.
-<strong class="accent-text">Scope 2</strong> is the grid energy keeping the server alive regardless of traffic — idle draw and infrastructure overhead, like a warehouse that stays lit whether trucks are loading or not. We can calculate this too: a t3.small running 24/7 in Ohio draws ~7W, costing ~10 kg CO₂eq/year regardless of how many forecasts you run.
+<strong class="accent-text">Scope 2</strong> is the grid energy keeping the server alive regardless of traffic — idle draw and infrastructure overhead, like a warehouse that stays lit whether trucks are loading or not. We can calculate this too: a t3.small running 24/7 in Ohio draws ~7W, costing ~24 kg CO₂eq/year regardless of how many forecasts you run.
 <strong class="accent-text">Scope 3</strong> is everything upstream and downstream: hardware manufacturing, model training, student devices, network transmission, and the AI that built this tool. We measured Scope 1 and estimated Scope 2. Scope 3 is mostly invisible — just like in your suppliers' reports.
 </div>
 </div>
@@ -301,6 +301,27 @@ Every computation has a physical cost. ERP systems, route optimizers, demand pla
 </div>
 </div>
 </div>
+<div class="section-title" style="margin-top:24px;">Your Emissions by Scope</div>
+<div class="scales-grid" style="grid-template-columns:1fr 1fr 1fr;">
+<div class="emissions-card">
+<h3>Scope 1</h3>
+<div class="emission-value" id="scope1Value">0.0000</div>
+<div class="emission-label">g CO₂eq</div>
+<div class="comparison">Direct emissions from your forecast requests this session</div>
+</div>
+<div class="emissions-card">
+<h3>Scope 2</h3>
+<div class="emission-value" id="scope2Value">0.0000</div>
+<div class="emission-label">g CO₂eq</div>
+<div class="comparison">Your share of server idle power (t3.small, ~7W, Ohio grid)</div>
+</div>
+<div class="emissions-card">
+<h3>Scope 3</h3>
+<div class="emission-value" id="scope3Value">435.4</div>
+<div class="emission-label">g CO₂eq (build total)</div>
+<div class="comparison">AI-assisted development: Qwen3.5:27b on 2x RTX 3090 Ti, 5.75 hrs. Your share: <span id="scope3Share">-</span></div>
+</div>
+</div>
 </div>
 <script>
 const API_BASE = "";
@@ -309,6 +330,32 @@ let yData = [];
 let dates = [];
 let exogData = {};
 let exogColumns = [];
+
+// --- Scope tracking ---
+const SESSION_START = Date.now();
+const SCOPE2_WATTS = 7;           // t3.small idle draw
+const GRID_INTENSITY = 0.39;      // Ohio kg CO2/kWh annual avg
+const BUILD_EMISSIONS_G = 435.4;  // from emissions.csv (Qwen3.5:27b build session)
+let sessionScope1_g = 0;
+let sessionRequests = 0;
+
+function updateScopeCards(classRequests) {
+  // Scope 1: cumulative user session emissions
+  document.getElementById('scope1Value').textContent = sessionScope1_g.toFixed(4);
+
+  // Scope 2: user's share of idle server power during their session
+  const sessionSeconds = (Date.now() - SESSION_START) / 1000;
+  const sessionHours = sessionSeconds / 3600;
+  const scope2_kwh = (SCOPE2_WATTS * sessionHours) / 1000;
+  const scope2_g = scope2_kwh * GRID_INTENSITY * 1000;
+  document.getElementById('scope2Value').textContent = scope2_g.toFixed(4);
+
+  // Scope 3: share of build emissions based on user's fraction of total requests
+  if (classRequests > 0 && sessionRequests > 0) {
+    const share_g = (sessionRequests / classRequests) * BUILD_EMISSIONS_G;
+    document.getElementById('scope3Share').textContent = share_g.toFixed(2) + ' g';
+  }
+}
 
 const SAMPLE_DATA = {
 headers: ["week", "date", "demand", "temperature_f"],
@@ -748,6 +795,10 @@ document.getElementById('scale10k').textContent = fmtG(s['10k_users_daily_g']);
 document.getElementById('scale500k').textContent = fmtG(s['500k_users_daily_g']);
 document.getElementById('scale10kAnalogy').textContent = getComparison(s['10k_users_daily_g'], DAILY_CMP, DAILY_FALLBACK);
 document.getElementById('scale500kAnalogy').textContent = getComparison(s['500k_users_daily_g'], DAILY_CMP, DAILY_FALLBACK);
+// Track Scope 1
+sessionScope1_g += emissions.emissions_g;
+sessionRequests++;
+updateScopeCards(0);
 }
 
 function updateAggregate(agg) {
@@ -760,6 +811,7 @@ document.getElementById('aggScale10k').textContent = fmtKg(agg.scales['10k_users
 document.getElementById('aggScale500k').textContent = fmtKg(agg.scales['500k_users_annual_kg']);
 document.getElementById('aggScale10kAnalogy').textContent = getComparison(agg.scales['10k_users_annual_kg'], ANNUAL_CMP, ANNUAL_FALLBACK);
 document.getElementById('aggScale500kAnalogy').textContent = getComparison(agg.scales['500k_users_annual_kg'], ANNUAL_CMP, ANNUAL_FALLBACK);
+updateScopeCards(agg.n_requests);
 }
 
 async function pollAggregate() {
