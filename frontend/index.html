@@ -318,8 +318,21 @@ Every computation has a physical cost. ERP systems, route optimizers, demand pla
 <div class="emissions-card">
 <h3>Scope 3</h3>
 <div class="emission-value" id="scope3Value">435.4</div>
-<div class="emission-label">g CO₂eq (build total)</div>
+<div class="emission-label">g CO₂eq (measured: build session only)</div>
 <div class="comparison">AI-assisted development: Qwen3.5:27b on 2x RTX 3090 Ti, 5.75 hrs. Your share: <span id="scope3Share">-</span></div>
+<table class="forecast-table" style="margin-top:12px;">
+<thead><tr><th>Source</th><th style="text-align:right;">Estimate</th></tr></thead>
+<tbody>
+<tr><td>AI build session (CodeCarbon measured)</td><td class="monospace" style="text-align:right;color:var(--accent);">435.4 g</td></tr>
+<tr><td>Server hardware manufacturing</td><td class="monospace" style="text-align:right;opacity:0.5;">unmeasured</td></tr>
+<tr><td>GPU hardware manufacturing (dev machine)</td><td class="monospace" style="text-align:right;opacity:0.5;">unmeasured</td></tr>
+<tr><td>Cloud datacenter embodied carbon</td><td class="monospace" style="text-align:right;opacity:0.5;">unmeasured</td></tr>
+<tr><td>Model training (upstream, pre-Qwen weights)</td><td class="monospace" style="text-align:right;opacity:0.5;">unmeasured</td></tr>
+<tr><td>Network infrastructure (CDN, routing)</td><td class="monospace" style="text-align:right;opacity:0.5;">unmeasured</td></tr>
+<tr><td>Student devices (downstream)</td><td class="monospace" style="text-align:right;opacity:0.5;">unmeasured</td></tr>
+<tr><td>Student network transmission</td><td class="monospace" style="text-align:right;opacity:0.5;">unmeasured</td></tr>
+</tbody>
+</table>
 </div>
 </div>
 </div>
