@@ -45,7 +45,8 @@ The reveal structure is the core of the lesson. Students use the tool without kn
 - **Light/dark mode toggle** with localStorage persistence (moon/sun icon in header)
 - **TL;DR dropdown** explaining Scope 1/2/3 emissions analogy
 - **Loading spinner** on the Run Forecast button while requests are in flight
-- **Optimization warnings** — confirm dialog before running expensive grid searches (SARIMA, ARIMA, ARIMAX, Holt-Winters, Auto ARIMA)
+- **Scope 1/2/3 cards** — live session tracking of direct emissions, server idle share, and build emissions share with unmeasured upstream/downstream sources
+- **Optimization warnings** — confirm dialog before running expensive grid searches (SARIMA, ARIMA, ARIMAX, Holt-Winters)
 - **Methodology dropdown** explaining how CodeCarbon measures emissions
 - **Real-world comparisons** — randomized analogies for emission values at every scale
 - **Responsive layout** — collapses to single column on mobile
@@ -97,7 +98,7 @@ source ~/forecast_env/bin/activate
 pip install codecarbon
 
 # Install project dependencies
-pip install fastapi "uvicorn[standard]" statsmodels pmdarima numpy pandas
+pip install fastapi "uvicorn[standard]" statsmodels numpy pandas
 
 # Copy backend/ directory from your machine
 
@@ -148,7 +149,7 @@ python generate_synthetic.py
 ~/projects/digital_sc_emissions/
 ├── backend/
 │   ├── main.py              # FastAPI endpoints
-│   ├── forecaster.py        # 10 forecasting methods + optimization
+│   ├── forecaster.py        # 9 forecasting methods + optimization
 │   ├── emissions_tracker.py # CodeCarbon wrapper
 │   ├── aggregate.py         # SQLite session logging
 │   ├── requirements.txt     # Python deps
@@ -158,8 +159,12 @@ python generate_synthetic.py
 ├── data/
 │   ├── generate_synthetic.py
 │   └── synthetic_demand.csv
+├── public/
+│   └── favicon.ico          # Browser tab icon
 ├── tools/
 │   └── session_analysis.py  # Post-session join
+├── emissions.csv            # Build session emissions (CodeCarbon output)
+├── supply_chain_emissions_analogy.svg
 └── README.md
 ```
 
@@ -167,7 +172,7 @@ python generate_synthetic.py
 
 - **Baseline**: Naive, Seasonal Naive, Simple Moving Average
 - **Exponential Smoothing**: SES, Holt (Linear), Holt-Winters (Triple)
-- **ARIMA Family**: ARIMA, SARIMA, ARIMAX (with exog), Auto ARIMA
+- **ARIMA Family**: ARIMA, SARIMA, ARIMAX (with exog)
 
 All exponential smoothing and ARIMA methods support optional parameter optimization.
 
@@ -184,4 +189,5 @@ All exponential smoothing and ARIMA methods support optional parameter optimizat
 - GPU power read via NVML (development machine only)
 - EC2 has no GPU — falls back to CPU TDP estimates
 - Frontend includes a methodology dropdown explaining how emissions are measured
-- Optimization on SARIMA with s=52 can take several minutes (grid search across ~54 model combinations)
+- SARIMA optimization caps seasonal period to s=26 and uses a 120-second timeout to prevent OOM on small instances
+- gc.collect() runs between SARIMA grid search iterations to manage memory
